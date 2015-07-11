@@ -2,7 +2,7 @@
 # Project
 ################################################################################
 PROJECT = canmon
-TARGET  = atmega16m1
+TARGET  = atmega2560
 F_CPU   = 16000000L
 
 
@@ -82,7 +82,7 @@ upload: hex
 	@echo
 	@echo "\033[01;32mAVRDUDE\033[00m $(BUILD_DIR)/$(PROJECT).hex\033[01;37m"
 	@echo "$(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$(BUILD_DIR)/$(PROJECT).hex -U eeprom:w:$(BUILD_DIR)/$(PROJECT).eep\033[01;35m"
-	@$(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$(BUILD_DIR)/$(PROJECT).hex -U eeprom:w:$(BUILD_DIR)/$(PROJECT).eep
+	@$(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$(BUILD_DIR)/$(PROJECT).hex # -U eeprom:w:$(BUILD_DIR)/$(PROJECT).eep
 
 clean:
 	@echo
