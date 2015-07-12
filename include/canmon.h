@@ -6,8 +6,10 @@
 
 #include <stdint.h>
 
+#include <avr/interrupt.h>
 #include <avr/io.h>
 
+#include <util/atomic.h>
 #include <util/setbaud.h>
 
 #include "cm_can.h"
