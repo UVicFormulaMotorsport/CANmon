@@ -13,9 +13,6 @@ static volatile uint8_t cm_uart_tx_buf_tail;
 static volatile uint8_t cm_uart_rx_buf_head;
 static volatile uint8_t cm_uart_rx_buf_tail;
 
-static volatile uint8_t cm_uart_tx_err;
-static volatile uint8_t cm_uart_rx_err;
-
 volatile cm_uart_err_e cm_uart_err = 0;
 
 
@@ -57,8 +54,11 @@ cm_uart_write(uint8_t byte)
 		/* Error: TX buffer full */
 		cm_uart_err = E_UART_TX_BUF_FULL;
 
-		/* XXX: Handle this condition better? */
+		/* TODO: Handle this condition better? */
 		return;
+	} else {
+		/* Clear any previous error */
+		cm_uart_err = 0;
 	}
 
 	/* Write byte to the TX buffer and save new TX buffer head */
@@ -79,7 +79,11 @@ cm_uart_read(void)
 		/* Error: RX buffer empty */
 		cm_uart_err = E_UART_RX_BUF_EMPTY;
 		
+		/* Nothing to return, so return nothing */
 		return 0;
+	} else {
+		/* Clear any previous error */
+		cm_uart_err = 0;
 	}
 
 	/* Calculate and save new RX buffer tail */
@@ -111,7 +115,19 @@ ISR(USART0_UDRE_vect)
 
 ISR(USART0_RX_vect)
 {
-	uint8_t head, byte;
+	uint8_t head, byte, ucsr0a;
+
+	/* Check UART status register */
+	ucsr0a = UCSR0A;
+
+	/* Flag any receive errors */
+	if (ucsr0a & (1 << FE0)) {
+		cm_uart_err = E_UART_FRAME_ERROR;
+	} else if (ucsr0a & (1 << DOR0)) {
+		cm_uart_err = E_UART_RX_OVERRUN;
+	} else if (ucsr0a & (1 << UPE0)) {
+		cm_uart_err = E_UART_PARITY_ERROR;
+	}
 
 	/* Copy byte from UART */
 	byte = UDR0;
@@ -123,6 +139,9 @@ ISR(USART0_RX_vect)
 		/* Error: RX buffer full */
 		cm_uart_err = E_UART_RX_BUF_FULL;
 	} else {
+		/* Clear any previous error */
+		cm_uart_err = 0;
+
 		/* Save new RX buffer head and received byte to RX buffer */
 		cm_uart_rx_buf_head  = head;
 		cm_uart_rx_buf[head] = byte;
