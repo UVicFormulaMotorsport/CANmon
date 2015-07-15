@@ -39,6 +39,8 @@ cm_uart_init(void)
 	/* Set baud rate */
 	UBRR0L = UBRRL_VALUE;
 	UBRR0H = UBRRH_VALUE;
+
+	/* TODO: Set frame format */
 }
 
 
@@ -128,6 +130,8 @@ ISR(USART0_RX_vect)
 	} else if (ucsr0a & (1 << UPE0)) {
 		cm_uart_err = E_UART_PARITY_ERROR;
 	}
+
+	/* XXX: Should the above errors return, i.e. is the byte usable? */
 
 	/* Copy byte from UART */
 	byte = UDR0;
