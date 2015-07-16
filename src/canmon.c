@@ -1,94 +1,145 @@
 #include "canmon.h"
-
-
-static cm_msg_state_e cm_msg_state;
-
+	
 
 int
 main(void)
 {
 	uint8_t byte, checksum = 0, sequence = 0, length = 0, index = 0;
-	uint8_t message[64];
+
+	enum {
+		MSG_STATE_START = 1,
+		MSG_STATE_SEQ,
+		MSG_STATE_LENGTH,
+		MSG_STATE_BODY,
+		MSG_STATE_CHECKSUM,
+		MSG_STATE_ERROR,
+		MSG_STATE_COMPLETE
+	} msg_state;
+
+	char message[CM_MSG_MAX_LENGTH];
+	char response[CM_MSG_MAX_LENGTH];
 
 	cm_uart_init();
 
 	sei();
 
 	for (;;) {
+
+		/*********************************************************************** 
+		 * Read Message
+		 **********************************************************************/
+
 		/* Start state machine waiting for start byte */
-		cm_msg_state = MSG_STATE_READ_START;
+		msg_state = MSG_STATE_START;
 
 		/* Run state machine until the received message needs processing */
-		while (cm_msg_state != MSG_STATE_COMPLETE) {
+		while (msg_state != MSG_STATE_COMPLETE) {
 
 			byte = cm_uart_read();
 
-			switch (cm_msg_state) {
-				case MSG_STATE_READ_START:
+			if (byte == 0) continue;
+
+			switch (msg_state) {
+
+				/* Initial (reset) state, read start byte */
+				case MSG_STATE_START:
 					if (byte == CM_MSG_START) {
-						cm_msg_state = MSG_STATE_READ_SEQ;
+						msg_state = MSG_STATE_SEQ;
 						checksum = CM_MSG_START ^ 0;
 					}
 					break;
 
-				case MSG_STATE_READ_SEQ:
+				/* Read sequence byte */
+				case MSG_STATE_SEQ:
 					sequence = byte;
-					cm_msg_state = MSG_STATE_READ_LENGTH;
+					msg_state = MSG_STATE_LENGTH;
 					checksum ^= byte;
 					break;
 
-				case MSG_STATE_READ_LENGTH:
+				/* Read message length */
+				case MSG_STATE_LENGTH:
 					length = byte;
-					cm_msg_state = MSG_STATE_READ_BODY;
-					index = 0;
-					checksum ^= byte;
+
+					if (length > CM_MSG_MAX_LENGTH) {
+						msg_state = MSG_STATE_ERROR;
+					} else {
+						msg_state = MSG_STATE_BODY;
+						index = 0;
+						checksum ^= byte;
+					}
+
 					break;
 
-				case MSG_STATE_READ_BODY:
+				/* Read message body bytes */
+				case MSG_STATE_BODY:
 					message[index++] = byte;
 					checksum ^= byte;
 
-					if (index == length) cm_msg_state = MSG_STATE_READ_CHECKSUM;
+					/* Check for ESC -- state machine should be reset */
+					if (byte == CM_MSG_START) msg_state = MSG_STATE_START;
 
+					if (index == length) msg_state = MSG_STATE_CHECKSUM;
 					break;
 
-				case MSG_STATE_READ_CHECKSUM:
+				/* Read checksum byte */
+				case MSG_STATE_CHECKSUM:
+
+					// TODO: Read and process checksum
+
+					msg_state = MSG_STATE_COMPLETE;
 					break;
 
+				/* Message error */
+				case MSG_STATE_ERROR:
+
+					// TODO: Handle error
+
+					msg_state = MSG_STATE_COMPLETE;
+					break;
+
+				/* Complete, so start processing */
 				case MSG_STATE_COMPLETE:
 					break;
 			}
 		}
 
-		switch (message[0]) {
 
+		/*********************************************************************** 
+		 * Process Message
+		 **********************************************************************/
+
+		switch (message[0]) {
+			case MSG_COMMAND_IDENT:
+				length = 6;
+				strcpy(response, "CANmon");
+				break;
 		}
 
+
+		/*********************************************************************** 
+		 * Send Response
+		 **********************************************************************/
+
+		/* Write start byte */
 		cm_uart_write(CM_MSG_START);
 		checksum = CM_MSG_START ^ 0;
 
+		/* Write sequence number of message this response is for */
 		cm_uart_write(sequence);
 		checksum ^= sequence;
 
+		/* Write response length */
 		cm_uart_write(length);
 		checksum ^= length;
 
+		/* Write response body bytes */
+		for (index = 0; index < length; index++) {
+			cm_uart_write(response[index]);
+			checksum ^= response[index];
+		}
+
+		/* Write response checksum */
 		cm_uart_write(checksum);
-	}
-
-	uint8_t rx_byte = 0;
-	uint8_t tx_byte = 65;
-
-	for (;;) {
-		rx_byte = cm_uart_read();
-		if (rx_byte);
-
-		do {
-			cm_uart_write(tx_byte);
-		} while (cm_uart_err == E_UART_TX_BUF_FULL);
-
-		if (tx_byte == 90) tx_byte = 65;
-		else tx_byte++;
 	}
 
 	return 0;
