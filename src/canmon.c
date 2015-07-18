@@ -37,7 +37,7 @@ main(void)
 
 			byte = cm_uart_read();
 
-			if (byte == 0) continue;
+			if (cm_uart_err == E_UART_RX_BUF_EMPTY) continue;
 
 			switch (msg_state) {
 
