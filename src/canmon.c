@@ -7,17 +7,17 @@ main(void)
 	uint8_t byte, checksum = 0, sequence = 0, length = 0, index = 0;
 
 	enum {
-		MSG_STATE_START = 1,
-		MSG_STATE_SEQ,
-		MSG_STATE_LENGTH,
-		MSG_STATE_BODY,
-		MSG_STATE_CHECKSUM,
-		MSG_STATE_ERROR,
-		MSG_STATE_COMPLETE
-	} msg_state;
+		CMD_STATE_START = 1,
+		CMD_STATE_SEQ,
+		CMD_STATE_LENGTH,
+		CMD_STATE_BODY,
+		CMD_STATE_CHECKSUM,
+		CMD_STATE_ERROR,
+		CMD_STATE_COMPLETE
+	} cmd_state;
 
-	char message[CM_MSG_MAX_LENGTH];
-	char response[CM_MSG_MAX_LENGTH];
+	char command_body[CM_MSG_MAX_LENGTH];
+	char reply_body[CM_MSG_MAX_LENGTH];
 
 	cm_uart_init();
 
@@ -26,44 +26,48 @@ main(void)
 	for (;;) {
 
 		/*********************************************************************** 
-		 * Read Message
+		 * Stream CAN Messages
+		 **********************************************************************/
+
+		/*********************************************************************** 
+		 * Read Commands
 		 **********************************************************************/
 
 		/* Start state machine waiting for start byte */
-		msg_state = MSG_STATE_START;
+		cmd_state = CMD_STATE_START;
 
-		/* Run state machine until the received message needs processing */
-		while (msg_state != MSG_STATE_COMPLETE) {
+		/* Run state machine until the received command needs processing */
+		while (cmd_state != CMD_STATE_COMPLETE) {
 
 			byte = cm_uart_read();
 
 			if (cm_uart_err == E_UART_RX_BUF_EMPTY) continue;
 
-			switch (msg_state) {
+			switch (cmd_state) {
 
 				/* Initial (reset) state, read start byte */
-				case MSG_STATE_START:
-					if (byte == CM_MSG_START) {
-						msg_state = MSG_STATE_SEQ;
-						checksum = CM_MSG_START ^ 0;
+				case CMD_STATE_START:
+					if (byte == CM_MSG_COMMAND) {
+						cmd_state = CMD_STATE_SEQ;
+						checksum = CM_MSG_COMMAND ^ 0;
 					}
 					break;
 
 				/* Read sequence byte */
-				case MSG_STATE_SEQ:
+				case CMD_STATE_SEQ:
 					sequence = byte;
-					msg_state = MSG_STATE_LENGTH;
+					cmd_state = CMD_STATE_LENGTH;
 					checksum ^= byte;
 					break;
 
 				/* Read message length */
-				case MSG_STATE_LENGTH:
+				case CMD_STATE_LENGTH:
 					length = byte;
 
 					if (length > CM_MSG_MAX_LENGTH) {
-						msg_state = MSG_STATE_ERROR;
+						cmd_state = CMD_STATE_ERROR;
 					} else {
-						msg_state = MSG_STATE_BODY;
+						cmd_state = CMD_STATE_BODY;
 						index = 0;
 						checksum ^= byte;
 					}
@@ -71,58 +75,55 @@ main(void)
 					break;
 
 				/* Read message body bytes */
-				case MSG_STATE_BODY:
-					message[index++] = byte;
+				case CMD_STATE_BODY:
+					command_body[index++] = byte;
 					checksum ^= byte;
 
-					/* Check for ESC -- state machine should be reset */
-					if (byte == CM_MSG_START) msg_state = MSG_STATE_START;
-
-					if (index == length) msg_state = MSG_STATE_CHECKSUM;
+					if (index == length) cmd_state = CMD_STATE_CHECKSUM;
 					break;
 
 				/* Read checksum byte */
-				case MSG_STATE_CHECKSUM:
+				case CMD_STATE_CHECKSUM:
 
 					// TODO: Read and process checksum
 
-					msg_state = MSG_STATE_COMPLETE;
+					cmd_state = CMD_STATE_COMPLETE;
 					break;
 
 				/* Message error */
-				case MSG_STATE_ERROR:
+				case CMD_STATE_ERROR:
 
 					// TODO: Handle error
 
-					msg_state = MSG_STATE_COMPLETE;
+					cmd_state = CMD_STATE_COMPLETE;
 					break;
 
 				/* Complete, so start processing */
-				case MSG_STATE_COMPLETE:
+				case CMD_STATE_COMPLETE:
 					break;
 			}
 		}
 
 
 		/*********************************************************************** 
-		 * Process Message
+		 * Process Command
 		 **********************************************************************/
 
-		switch (message[0]) {
-			case MSG_COMMAND_IDENT:
+		switch (command_body[0]) {
+			case CM_CMD_IDENT:
 				length = 6;
-				strcpy(response, "CANmon");
+				strcpy(reply_body, "CANmon");
 				break;
 		}
 
 
 		/*********************************************************************** 
-		 * Send Response
+		 * Send Reply
 		 **********************************************************************/
 
 		/* Write start byte */
-		cm_uart_write(CM_MSG_START);
-		checksum = CM_MSG_START ^ 0;
+		cm_uart_write(CM_MSG_REPLY);
+		checksum = CM_MSG_REPLY ^ 0;
 
 		/* Write sequence number of message this response is for */
 		cm_uart_write(sequence);
@@ -134,8 +135,8 @@ main(void)
 
 		/* Write response body bytes */
 		for (index = 0; index < length; index++) {
-			cm_uart_write(response[index]);
-			checksum ^= response[index];
+			cm_uart_write(reply_body[index]);
+			checksum ^= reply_body[index];
 		}
 
 		/* Write response checksum */
