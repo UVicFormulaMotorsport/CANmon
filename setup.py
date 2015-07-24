@@ -5,7 +5,7 @@ version = __import__('canmon').VERSION
 setup(
 	name = 'CANmon',
 	version = version,
-	url = 'https://github.com/darrylring/canmon',
+	url = 'https://github.com/UVicFormulaMotorsports/CANmon',
 	author = 'Darryl Ring',
 	author_email = 'darryl@darrylring.com',
 	license = 'MIT',
@@ -13,7 +13,7 @@ setup(
 	packages = ['canmon'],
 	entry_points = {
 		'console_scripts': [
-			'canmon = canmon.cli.__init__:main',
+			'canmon = canmon.cli:main',
 		]
 	},
 
