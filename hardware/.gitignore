@@ -16,7 +16,7 @@
 
 # Data sheets and other documentation
 !documentation
-!documentation/*
+!documentation/**/*
 
 # Release files
 !release
