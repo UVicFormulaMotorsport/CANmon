@@ -39,7 +39,7 @@ OBJCOPY = avr-objcopy
 OBJDUMP = avr-objdump
 SIZE    = avr-size
 AVRDUDE = avrdude
-REMOVE  = rm -rvf
+REMOVE  = rm
 
 
 ################################################################################
@@ -62,6 +62,16 @@ LD_FLAGS += $(patsubst %,-I%,$(INCLUDE_DIR)) -I.
 AVRDUDE_FLAGS = -q -q -q -q -F -p $(TARGET) -c $(PROGRAMMER) -P $(PROGRAMMER_PORT) $(PROGRAMMER_OPTIONS)
 
 
+############################################################
+# Verbosity
+############################################################
+ifeq ($V, 1)
+	VERBOSE =
+else
+	VERBOSE = @
+endif
+
+
 ################################################################################
 # Targets: Actions
 ################################################################################
@@ -71,36 +81,33 @@ AVRDUDE_FLAGS = -q -q -q -q -F -p $(TARGET) -c $(PROGRAMMER) -P $(PROGRAMMER_POR
 all: $(BUILD_DIR)/$(PROJECT).out
 
 disasm: $(BUILD_DIR)/$(PROJECT).out
-	@echo "\033[01;32mOBJDUMP\033[00m $<\033[01;37m\n$(OBJDUMP) -d $< > $(BUILD_DIR)/$(PROJECT).s\033[01;35m"
-	@$(OBJDUMP) -d $< > $(BUILD_DIR)/$(PROJECT).s
+	@echo objdump $<
+	$(VERBOSE) $(OBJDUMP) -d $< > $(BUILD_DIR)/$(PROJECT).s
 
 hex: all $(BUILD_DIR)/$(PROJECT).hex $(BUILD_DIR)/$(PROJECT).eep
 
 upload: hex
-	@echo "\n\033[01;32mAVRDUDE\033[00m $(BUILD_DIR)/$(PROJECT).hex\033[01;37m\n$(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$(BUILD_DIR)/$(PROJECT).hex -U eeprom:w:$(BUILD_DIR)/$(PROJECT).eep\033[01;35m"
-	@$(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$(BUILD_DIR)/$(PROJECT).hex # -U eeprom:w:$(BUILD_DIR)/$(PROJECT).eep
+	$(VERBOSE) $(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$(BUILD_DIR)/$(PROJECT).hex # -U eeprom:w:$(BUILD_DIR)/$(PROJECT).eep
 
 clean:
-	@echo "\n\033[01;32mCLEAN\033[00m *.o *.s *.out *.hex *.eep\033[01;37m\nfind . \( -type f -name '*.o' -o -name '*.s' -o -name '*.out' -o -name '*.hex' \) -exec $(REMOVE) {} \;\033[01;35m"
-	@find . \( -type f -name '*.o' -o -name '*.s' -o -name '*.out' -o -name '*.hex' \) -exec $(REMOVE) {} \;
+	$(VERBOSE) find . \( -type f -name '*.o' -o -name '*.s' -o -name '*.out' -o -name '*.hex' \) -exec $(REMOVE) {} \;
 
 
 ################################################################################
 # Targets: Output
 ################################################################################
 $(BUILD_DIR)/$(PROJECT).out: $(OBJECTS)
-	@echo
-	@echo "\n\033[01;32mLD\033[00m $@\033[01;37m\n$(LD) -o $@ $(OBJECTS) $(LD_FLAGS)\033[01;35m"
-	@$(LD) -o $@ $(OBJECTS) $(LD_FLAGS)
+	@echo ld $<
+	$(VERBOSE) $(LD) -o $@ $(OBJECTS) $(LD_FLAGS)
 
 %.o: %.c
-	@echo "\n\033[01;32mCC\033[00m $<\033[01;37m\n$(CC) $(GCC_FLAGS) -c $< -o $@\033[01;35m"
-	@$(CC) $(GCC_FLAGS) -c $< -o $@
+	@echo cc $<
+	$(VERBOSE) $(CC) $(GCC_FLAGS) -c $< -o $@
 
 %.hex: %.out
-	@echo "\n\033[01;32mOBJCOPY\033[00m $@\033[01;37m\n$(OBJCOPY) -O ihex -R .eeprom $< $@\033[01;35m"
-	@$(OBJCOPY) -O ihex -R .eeprom $< $@
+	@echo objecopy $<
+	$(VERBOSE) $(OBJCOPY) -O ihex -R .eeprom $< $@
 	
 %.eep: %.out
-	@echo "\n\033[01;32mOBJCOPY\033[00m $@\033[01;37m\n$(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 $< $@\033[01;35m"
-	@$(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 $< $@
+	@echo objcopy $<
+	$(VERBOSE) $(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 $< $@
