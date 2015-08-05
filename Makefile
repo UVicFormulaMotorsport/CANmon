@@ -82,7 +82,7 @@ all: $(BUILD_DIR)/$(PROJECT).out
 
 disasm: $(BUILD_DIR)/$(PROJECT).out
 	@echo objdump $<
-	$(VERBOSE) $(OBJDUMP) -d $< > $(BUILD_DIR)/$(PROJECT).s
+	$(VERBOSE) $(OBJDUMP) -D -S $< > $(BUILD_DIR)/$(PROJECT).s
 
 hex: all $(BUILD_DIR)/$(PROJECT).hex $(BUILD_DIR)/$(PROJECT).eep
 
@@ -97,7 +97,7 @@ clean:
 # Targets: Output
 ################################################################################
 $(BUILD_DIR)/$(PROJECT).out: $(OBJECTS)
-	@echo ld $<
+	@echo ld $@
 	$(VERBOSE) $(LD) -o $@ $(OBJECTS) $(LD_FLAGS)
 
 %.o: %.c
