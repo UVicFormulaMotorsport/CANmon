@@ -5,7 +5,7 @@ version = __import__('canmon').VERSION
 setup(
 	name = 'CANmon',
 	version = version,
-	url = 'https://github.com/UVicFormulaMotorsports/CANmon',
+	url = 'https://github.com/UVicFormulaMotorsport/CANmon',
 	author = 'Darryl Ring',
 	author_email = 'darryl@darrylring.com',
 	license = 'MIT',
