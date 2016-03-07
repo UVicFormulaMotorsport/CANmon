@@ -18,6 +18,8 @@ setup(
 	},
 
 	install_requires = [
-		'pyserial'
+		'flask',
+		'pyserial',
+		'requests'
 	]
 )
